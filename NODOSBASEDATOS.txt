@@ -1,0 +1,88 @@
+SELECT 'FA' "TipoDoc",
+       T0."DocDate", 
+       T0."DocNum", 
+CASE 
+	     WHEN T0."GroupNum" = -1 THEN 'Contado'
+	    ELSE 'Credito'
+		END AS "Tipo_Venta",
+		T1."WhsCode" AS "Almacen Venta",
+	T7."SlpName" AS "Asesor_Comercial",
+	   T1."CogsOcrCod" AS "Centro_Operaciones",
+	   T4."GroupName" "Grupo_Cliente", 
+       T0."CardCode",
+       T3."CardName",
+       T5."ItmsGrpNam" "Grupo_Articulo", 
+       T1."ItemCode", 
+       T6."ItemName", 
+       T6."SWeight1" AS "Peso",
+      ( T1."Quantity"* (CASE WHEN T6."SWeight1"=0 THEN 1 ELSE T6."SWeight1" END)) AS "Kg Vendidos",
+       T1."Quantity", 
+       T1."DiscPrcnt",
+       T1."LineTotal",
+       ( T1."LineTotal" * ( IFNULL(T0."DiscPrcnt",0)/100 ) ) "ValorDctoPie",
+       ( T1."LineTotal" * ( 1 - IFNULL(T0."DiscPrcnt",0)/100) ) "ValorAntesIva",
+       ( T1."LineTotal" * ( 1 - IFNULL(T0."DiscPrcnt",0)/100) ) / T1."Quantity" "ValorUnit",
+       T1."VatSum" "ValorIva",
+       ( T1."LineTotal" * ( 1 - IFNULL(T0."DiscPrcnt",0)/100 ) ) + T1."VatSum" "ValorTotal",
+       ( T1."GrossBuyPr" * T1."Quantity" ) "CostoVentas",
+       T1."GrossBuyPr" "CostoVentas/unit",
+        CASE 
+         WHEN T1."GrossBuyPr"  = 0 THEN 100
+         ELSE (((( T1."LineTotal" * ( 1 - IFNULL(T0."DiscPrcnt",0)/100) ) / T1."Quantity")-T1."GrossBuyPr")/(( T1."LineTotal" * ( 1 - IFNULL(T0."DiscPrcnt",0)/100) ) / T1."Quantity"))*100
+   	 END "%Rentabilidad"
+FROM OINV T0  INNER JOIN INV1 T1 ON T0."DocEntry" = T1."DocEntry"
+			  INNER JOIN OSLP T7 ON T0."SlpCode" = T7."SlpCode"
+              INNER JOIN OITM T6 ON T6."ItemCode" = T1."ItemCode"
+              INNER JOIN OITW T2 ON T2."ItemCode" = T1."ItemCode" AND T2."WhsCode" = T1."WhsCode"
+              INNER JOIN OCRD T3 ON T3."CardCode" = T0."CardCode" 
+              INNER JOIN OCRG T4 ON T4."GroupCode" = T3."GroupCode" 
+              INNER JOIN OITB T5 ON T5."ItmsGrpCod" = T6."ItmsGrpCod"     
+WHERE ( T0."DocDate" >=[%0] AND  T0."DocDate" <=[%1] ) AND
+      ( T1."TaxOnly" <> 'Y' ) AND
+      ( T0."CANCELED" = 'N' )
+
+UNION ALL
+
+SELECT 'NC' "TipoDoc",
+       T0."DocDate", 
+       T0."DocNum",
+CASE 
+	     WHEN T0."GroupNum" = -1 THEN 'Contado'
+	    ELSE 'Credito'
+		END AS "Tipo_Venta",
+		T1."WhsCode" AS "Almacen Venta",
+	T7."SlpName" AS "Asesor_Comercial",
+	   T1."CogsOcrCod" AS "Centro_Operaciones",
+       T4."GroupName" "Grupo_Cliente", 
+       T0."CardCode",
+       T3."CardName",
+       T5."ItmsGrpNam" "Grupo_Articulo", 
+       T1."ItemCode", 
+       T6."ItemName", 
+       T6."SWeight1"*-1 AS "Peso",
+       (T1."Quantity" * (CASE WHEN T6."SWeight1" = 0 THEN 1 ELSE T6."SWeight1" END)  * -1) AS "Kg Vendidos",
+       T1."Quantity", 
+       T0."DiscPrcnt",
+       T1."LineTotal" * -1,
+       ( T1."LineTotal" * ( IFNULL(T0."DiscPrcnt",0)/100 ) ) * -1 "ValorDctoPie",
+       ( T1."LineTotal" * ( 1 - IFNULL(T0."DiscPrcnt",0)/100) ) * -1 "ValorAntesIva", 
+       ( T1."LineTotal" * ( 1 - IFNULL(T0."DiscPrcnt",0)/100) ) / T1."Quantity" "ValorUnit",
+       T1."VatSum" * -1  "ValorIva",
+       ( ( T1."LineTotal" * ( 1 - IFNULL(T0."DiscPrcnt",0)/100 ) ) + T1."VatSum") * -1 "ValorTotal",
+       ( T1."GrossBuyPr" * T1."Quantity" ) * -1 "CostoVentas",
+       T1."GrossBuyPr" "CostoVentas/unit",
+      CASE 
+         WHEN T1."GrossBuyPr"  = 0 THEN 100
+         ELSE ((T1."Price" / T1."GrossBuyPr")-1)*100
+   	 END "%Rentabilidad"
+
+FROM ORIN T0  INNER JOIN RIN1 T1 ON T0."DocEntry" = T1."DocEntry" 
+              INNER JOIN OSLP T7 ON T0."SlpCode" = T7."SlpCode"
+			  INNER JOIN OITM T6 ON T6."ItemCode" = T1."ItemCode"
+              INNER JOIN OITW T2 ON T2."ItemCode" = T1."ItemCode" AND T2."WhsCode" = T1."WhsCode"
+              INNER JOIN OCRD T3 ON T3."CardCode" = T0."CardCode" 
+              INNER JOIN OCRG T4 ON T4."GroupCode" = T3."GroupCode" 
+              INNER JOIN OITB T5 ON T5."ItmsGrpCod" = T6."ItmsGrpCod"     
+WHERE ( T0."DocDate" >=[%0] AND  T0."DocDate" <=[%1] ) AND
+      ( T1."TaxOnly" <> 'Y' ) AND
+      ( T0."CANCELED" = 'N' )
